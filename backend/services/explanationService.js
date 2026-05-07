@@ -1,59 +1,164 @@
-const explanations = {
+/**
+ * explanationService.js
+ *
+ * Maps indicator strings to human-readable explanations.
+ * Uses partial-match lookup so indicators with dynamic values
+ * (e.g. brand names, counts) are still matched correctly.
+ */
 
-"Website not using HTTPS":
-"Legitimate websites typically use HTTPS encryption. Phishing sites often avoid HTTPS or use misconfigured certificates.",
+const EXPLANATIONS = [
+    {
+        match: "URL uses IP address",
+        text: "Phishing sites often use raw IP addresses instead of domain names to avoid registration tracking and to confuse victims."
+    },
+    {
+        match: "Suspicious top-level domain",
+        text: "Certain TLDs (.tk, .ml, .xyz, .top, etc.) are offered for free or very cheaply and are disproportionately used in phishing campaigns."
+    },
+    {
+        match: "URL shortener detected",
+        text: "URL shortening services hide the true destination, which is a common phishing technique to prevent victims from seeing the real domain."
+    },
+    {
+        match: "Excessively long URL",
+        text: "Very long URLs are a strong indicator of phishing — attackers pad URLs with random tokens and parameters to obscure the true domain."
+    },
+    {
+        match: "Long URL",
+        text: "Longer-than-average URLs can be a sign of obfuscation. Legitimate sites generally use concise, readable URLs."
+    },
+    {
+        match: "Contains @ symbol",
+        text: "The '@' symbol in a URL causes browsers to ignore everything before it. Phishers use this to hide the real destination (e.g., google.com@evil.com goes to evil.com)."
+    },
+    {
+        match: "Excessive subdomain depth",
+        text: "Phishing sites create very deep subdomain chains (e.g., login.paypal.secure.verify.evil.com) to make the URL look legitimate at a glance."
+    },
+    {
+        match: "Multiple subdomain levels",
+        text: "Multiple subdomain levels can be used to embed trusted brand names while directing traffic to an attacker-controlled domain."
+    },
+    {
+        match: "Multiple hyphens in domain",
+        text: "Domains with multiple hyphens (e.g., paypal-secure-login.com) are a well-known phishing pattern used to impersonate legitimate services."
+    },
+    {
+        match: "Hyphenated domain name",
+        text: "Hyphens are commonly inserted into domain names to impersonate brands (e.g., 'paypal-verify.com' instead of 'paypal.com')."
+    },
+    {
+        match: "found in subdomain (possible spoofing)",
+        text: "Placing a trusted brand name in a subdomain (e.g., paypal.attacker.com) is a classic phishing trick — the real domain is attacker.com, not paypal.com."
+    },
+    {
+        match: "Possible typosquatting",
+        text: "The domain is suspiciously similar to a well-known brand (e.g., 'paypa1.com' vs 'paypal.com'). Attackers register near-identical domains hoping users won't notice the difference."
+    },
+    {
+        match: "Numeric characters in domain name",
+        text: "Numbers substituted for similar-looking letters (e.g., '0' for 'o', '1' for 'l') is a homograph attack technique used to impersonate brands."
+    },
+    {
+        match: "Non-standard port",
+        text: "Legitimate websites use standard ports (80/443). A non-standard port often indicates a malicious server that cannot obtain proper hosting."
+    },
+    {
+        match: "redirect parameter",
+        text: "URLs containing redirect parameters (e.g., ?url=, ?goto=) can chain victims through multiple domains, ultimately landing on a phishing page."
+    },
+    {
+        match: "Double slashes in URL path",
+        text: "Double slashes in the path component are an obfuscation technique used to confuse URL parsers and evade detection."
+    },
+    {
+        match: "Heavy percent-encoding",
+        text: "Excessive URL encoding (e.g., %70%61%79%70%61%6C) is used to obscure malicious URLs from security scanners and email filters."
+    },
+    {
+        match: "Percent-encoded characters",
+        text: "Percent-encoding in URLs can be used to hide malicious intent from security tools that don't decode before scanning."
+    },
+    {
+        match: "Multiple sensitive keywords in URL path",
+        text: "Multiple sensitive terms (login, verify, secure, account) in the URL path are strong indicators of a credential-harvesting phishing page."
+    },
+    {
+        match: "Sensitive keyword in URL path",
+        text: "Words like 'login', 'verify', or 'secure' in the URL path are often used by phishing sites to appear legitimate."
+    },
+    {
+        match: "Malformed URL",
+        text: "The URL is malformed or invalid. Legitimate services always use properly formatted URLs."
+    },
+    {
+        match: "Possible brand impersonation",
+        text: "The page references a well-known brand name but is hosted on an unrelated domain. This is the core technique of phishing — tricking users into thinking they're on a legitimate site."
+    },
+    {
+        match: "Multiple phishing phrases detected",
+        text: "The page contains numerous phrases commonly used in phishing attacks to create urgency and panic, pressuring users into acting without thinking."
+    },
+    {
+        match: "Phishing-related language detected",
+        text: "The page uses language designed to create urgency or fear (e.g., 'your account is suspended', 'verify now'). This is a hallmark of social engineering attacks."
+    },
+    {
+        match: "Login/credential form detected",
+        text: "A login form is present on this page. Combined with other signals, this is a strong indicator the page is designed to steal credentials."
+    },
+    {
+        match: "Form submits data to a different domain",
+        text: "The login form on this page sends your data to a different domain — a definitive sign of credential harvesting. Your password would go directly to attackers."
+    },
+    {
+        match: "Hidden iframe",
+        text: "Hidden iframes (invisible page embeds) are used in phishing kits to load malicious content or steal session data without the user's knowledge."
+    },
+    {
+        match: "High number of external scripts",
+        text: "Loading many external scripts can indicate a phishing kit assembling a fake page from multiple malicious sources, or tracking/logging user input."
+    },
+    {
+        match: "Right-click disabled",
+        text: "Disabling right-click is an anti-inspection technique used by phishing kits to prevent users from viewing page source or reporting the page."
+    },
+    {
+        match: "Meta refresh redirect",
+        text: "A meta refresh tag automatically redirects users to another page. This is used in multi-hop phishing chains to move victims through decoy pages."
+    },
+    {
+        match: "Login form present but no favicon",
+        text: "Phishing kit pages often forget to include a favicon. A credential-collecting form without a favicon is a common characteristic of quickly-assembled phishing pages."
+    },
+    {
+        match: "Domain does not resolve",
+        text: "The domain does not exist in DNS — it may have been taken down after being reported, or it was never a real domain."
+    },
+    {
+        match: "Very new domain",
+        text: "This domain was registered within the last 30 days. Phishing campaigns frequently use freshly-registered domains to avoid blacklists."
+    },
+    {
+        match: "Relatively new domain",
+        text: "This domain is less than 6 months old. While not conclusive alone, newly registered domains are disproportionately used in phishing."
+    },
+    {
+        match: "VirusTotal",
+        text: "VirusTotal aggregates results from 70+ antivirus engines and URL scanners. A detection here means professional security tools have flagged this URL as malicious."
+    }
+];
 
-"URL contains @ symbol":
-"The '@' symbol can hide the real destination of a URL and is commonly used in phishing attacks.",
-
-"URL uses IP address instead of domain name":
-"Phishing sites sometimes use raw IP addresses to avoid domain registration tracking.",
-
-"URL has excessive subdomains":
-"Phishing sites often create long subdomains to imitate legitimate services.",
-
-"Domain registered recently":
-"Phishing websites frequently use newly registered domains to avoid detection.",
-
-"Suspicious top-level domain used":
-"Certain top-level domains such as .xyz, .tk, and .top are frequently abused in phishing campaigns.",
-
-"Possible impersonation":
-"Attackers often include well-known brand names in malicious domains to trick users into trusting the site.",
-
-"Login form detected":
-"Phishing sites often include login forms to steal user credentials.",
-
-"Website contains iframe elements":
-"Iframes can be used to load hidden malicious content.",
-
-"Large number of external scripts":
-"Phishing pages may load multiple external scripts to execute malicious behavior.",
-
-"Shortened URL found in email":
-"URL shortening services can hide the true destination of malicious links.",
-
-"Reply-To address differs from sender":
-"Phishing emails often spoof the sender but redirect replies to attacker-controlled addresses."
-
-};
-
-function generateExplanation(indicators){
-
-return indicators.map(indicator=>{
-
-for(let key in explanations){
-
-if(indicator.includes(key)){
-return explanations[key];
+function generateExplanation(indicators) {
+    return indicators.map(indicator => {
+        const lowerIndicator = indicator.toLowerCase();
+        for (const entry of EXPLANATIONS) {
+            if (lowerIndicator.includes(entry.match.toLowerCase())) {
+                return entry.text;
+            }
+        }
+        return "This indicator suggests potentially suspicious behavior associated with phishing or social engineering.";
+    });
 }
 
-}
-
-return "This indicator suggests potentially suspicious behavior.";
-
-});
-
-}
-
-module.exports={generateExplanation};
+module.exports = { generateExplanation };

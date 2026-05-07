@@ -57,22 +57,23 @@ async function analyzeEmail(rawEmail) {
 
         if(raw.includes("reply-to:") && raw.includes("from:")){
 
-        const fromMatch = raw.match(/from:\s*(.*)/);
-        const replyMatch = raw.match(/reply-to:\s*(.*)/);
+    const fromMatch = raw.match(/from:\s*(.*)/);
+    const replyMatch = raw.match(/reply-to:\s*(.*)/);
 
-        if(fromMatch && replyMatch && fromMatch[1] !== replyMatch[1]){
+    if(fromMatch && replyMatch && fromMatch[1] !== replyMatch[1]){
 
-        score += 3;
-        indicators.push("Reply-To address differs from sender");
-
+        if (!indicators.includes("Reply-To address differs from sender")) {
+            score += 3;
+            indicators.push("Reply-To address differs from sender");
         }
 
-        }
-        return { score, indicators };
+    }
+}
+        return { score, indicators, links };
 
     } catch (error) {
 
-        return { score: 0, indicators: [] };
+        return { score: 0, indicators: [], links: [] };
 
     }
 

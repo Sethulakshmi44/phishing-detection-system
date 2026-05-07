@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const { analyzeURL } = require("../controllers/urlController");
+const { analyzeURL,downloadReport } = require("../controllers/urlController");
 
 router.post("/analyze-url", analyzeURL);
+router.post("/download-report", downloadReport);
 
 module.exports = router;
